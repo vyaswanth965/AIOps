@@ -1,0 +1,288 @@
+
+
+# 🧠 ITOPs Agents using IBM Watsonx Orchestrate ADK
+
+This project demonstrates how to build an AI-powered **IT Operations (ITOps) Assistant Agent** using the **IBM watsonx Orchestrate** Agent Development Kit (ADK). It shows how to leverage the ADK’s powerful Python library and CLI tools to define an intelligent agent that understands natural-language commands, triggers operational diagnostics, and delivers actionable insights directly to IT teams. With this assistant, technicians can ask plain-English questions like “Fetch logs for event ID YaFcKlfeRwqUmLUQwje4EA” or “get insights for CVE-2024-5535” and receive contextual diagnostics and recommended remediation steps. The project covers end-to-end workflows: how to configure the agent’s knowledge base, integrate external tools for metrics/logs retrieval, deploy the agent to a live environment, and join it with enterprise workflows. By combining conversational AI with automated orchestration and monitoring, this solution empowers IT organisations to shift from reactive firefighting to proactive, intelligent operations.
+
+![orchestrate_env_name](images/Solution_Architecture.png)
+
+## 📁 Project Structure
+```
+├── README.md
+├── agents
+│ ├── concert.yaml
+│ ├── instana.yaml
+│ └── turbonomic.yaml
+├── data_ingestion_ES.ipynb
+├── files
+│ ├── concert_docs
+│ │ ├── cve2022-2068.json
+│ │ └── cve_data.json
+│ ├── instana_docs
+│ │ ├── AnalyzeCallGroups.json
+│ │ └── GetEvents.json
+│ └── turbo_docs
+│ └── 05-08-2025 OCP-FSM Resizing-1.json
+├── import-all.sh
+├── knowledge_base
+│ ├── concertdb.yaml.template
+│ └── turbodb.yaml.template
+└── tools
+  ├── getinstanalogs.py
+  ├── requirements.txt
+  └── utils.py
+```
+
+| Folder / File | Description |
+|----------------|-------------|
+| **agents/** | Contains YAML definitions for individual Orchestrate Agents (Concert, Instana, Turbonomic). |
+| **files/** | Includes JSON data sources and documents for each domain (Concert CVEs, Instana logs, Turbonomic data). |
+| **knowledge_base/** | Defines Orchestrate Knowledge Base configurations (`.yaml`) for connecting agents to data. |
+| **tools/** | Utility scripts for data extraction, log retrieval, and dependency setup. |
+| **data_ingestion_ES.ipynb** | Jupyter notebook to ingest data into Elasticsearch. |
+| **import-all.sh** | Shell script for bulk importing or automation tasks. |
+| **README.md** | Documentation for setting up and running the ITOPs Assistant project. |
+
+**1. Instana Agent** - The Instana Agent is a lightweight, intelligent monitoring component designed to automatically discover, collect, and report performance metrics and traces from your application environment in real time. It provides deep observability into infrastructure, services, and dependencies — enabling instant visibility into application health, latency, and errors. 
+
+**2. Concert Agent** -  The Concert Agent is a powerful automation component , designed to continuously monitor, analyze and act upon your application resilience, compliance and operational data in real time. Through intelligent data correlation and AI-driven insights, it surfaces hidden dependencies, vulnerabilities and configuration gaps — then transforms them into actionable remediation plans and audit-ready evidence. 
+
+**3. Turbonomic Agent** - The Turbonomic Agent is a lightweight, proactive instrumentation component designed to provide deep observability across your infrastructure and continuously stream real-time metrics and performance data. It enables full-stack visibility—from containers and services to virtual machines and storage—with actionable insights and resource-optimization recommendations. By correlating demand and supply across your hybrid or multicloud environment, the agent powers Turbonomic’s AI-driven decisions to automatically match application performance requirements with infrastructure resources, helping teams minimise cost, eliminate waste and assure consistent service delivery.
+
+## 💬 Example Questions / Commands
+
+🧩 Fetch logs for event ID **YaFcKlfeRwqUmLUQwje4EA**  
+🛡️ Get insights for **CVE-2024-5535**  
+🚨 Get CVEs with **high severity score**  
+🐳 Identify **images affected by CVE-2022-2068**  
+📊 Fetch **top severity critical UUIDs**  
+🔍 Get insights for **UUID 638929958641108**
+
+
+
+---
+
+## ⚙️ Create Agent using Orchestrate ADK
+
+### 1. Install Python 3.11+
+Make sure **Python 3.11** or above (up to **3.13**) is installed.
+
+
+### 2. Clone the Repository
+Open VS Code Terminal and Run below commands.  
+```bash
+git clone https://github.ibm.com/ibm-us-fsm-ce/AgenticAIforITOps.git
+````
+
+
+### 3. Navigate into the Project Folder
+
+```bash
+cd AgenticAIforITOps/Distributed\ Platforms/
+```
+
+
+### 4. Create a Virtual Environment
+
+```bash
+python -m venv envadk
+or
+python3 -m venv envadk
+
+source envadk/bin/activate
+```
+
+
+### 5. Install ADK and Validate
+
+```bash
+pip install ibm-watsonx-orchestrate
+# If you get errors, update ADK
+pip install --upgrade ibm-watsonx-orchestrate
+
+# Validate installation
+orchestrate --version
+orchestrate --help
+```
+### 6. Reserve Watsonx Orchestrate and watsonx Discovery(Elastic Search) 
+
+1. Open https://techzone.ibm.com/my/reservations in your browser.  
+2. In the search bar, type “watsonx Orchestrate Trial/Standard plan” and select the corresponding environment.
+    
+
+![orchestrate_env_name](images/orchestrate_env_name.png)
+
+
+3. Click Request an environment.   
+4. Fill out the form with the required details and submit.  
+
+![reserving](images/reserving.png)
+
+5. After successful reservation, you’ll receive an email invitation to join the environment. Click the link in the email to join.  
+
+Similarly, reserve the “watsonx Discovery with Assistant, AI, and Speech” environment.
+
+
+### 7. Add Watsonx Environment
+
+1. Go to https://techzone.ibm.com/my/reservations  
+2. Under watsonx Orchestrate Trial/Standard plan, click Open this environment.  
+
+ ![my_reservations](images/my_reservations.png)
+  
+3. Check your Cloud Account Number and click on Cloud Resources.
+ ![env_details](images/environment_details.png)
+
+4. Ensure you are in same IBM cloud account as in techzone reservation.    
+In the Resource List, expand AI / Machine Learning and click on the Watson Orchestrate-itz resource.  
+  ![env_details](images/resources.png)
+
+5. Run the following command to add your environment.
+Replace `<service-instance-url>` with your Watsonx Orchestrate URL and `<name>` with any name (e.g., Itops):
+```bash
+orchestrate env add -n <name> -u <service-instance-url>
+```
+  ![env_details](images/orchestrate_launch_page.png)
+
+### 8. Activate Environment
+Generate an API key using the instructions (upto step 8) on this page section IBM Cloud:
+https://developer.watson-orchestrate.ibm.com/environment/production_import#ibm-cloud
+
+Run the following command to activate your environment.  
+```bash
+orchestrate env activate <name>
+```
+You will be prompted to enter your WXO API key.
+
+### 9. Create `.env` File
+1. Go to https://techzone.ibm.com/my/reservations  
+2. Under Watsonx Discovery with Assistant, AI, and Speech, click Open this environment. 
+
+ ![my_reservations](images/my_reservations.png)
+  
+3. Check your Cloud Account Number and click Cloud Resources or Go to https://cloud.ibm.com/resources.  
+ ![env_details](images/environment_details.png)
+
+4. Ensure you are in same IBM cloud account as in techzone reservation.    
+In the Resource List, expand Databases and click on the Elastic search resource.  
+  ![env_details](images/resources2.png)
+5. In the left menu, click Service credentials → Create credential → Create (on the popup).  
+  ![env_details](images/Create_credentials.png)
+6. Once created, expand the new Service credentials and note the following fields  
+username  
+password  
+hostname  
+port  
+
+   These values will be used to create your .env file.  
+   
+7. Create a `.env` file at: ITOPs-Agentic-Lab/tools/  
+
+```bash
+ELASTICSEARCH_FULL_URL=https://your-elasticsearch-hostname:port
+ELASTICSEARCH_HOST=https://your-elasticsearch-hostname
+ELASTICSEARCH_PORT=your-elasticsearch-port
+ELASTIC_USER=your-elasticsearch-username
+ELASTIC_PASSWORD=your-elasticsearch-password
+```
+
+### 10. Ingest data into elastic search
+
+Open the data_ingestion_ES Jupyter notebook and click Run All.  
+![Ingest_data_into_ES](images/Ingest_data_into_ES.png)
+
+You should see a confirmation that data was successfully ingested by the ingest_documents function.
+
+
+
+### 11. Import Tools & Agents
+
+Use Import Script
+```bash
+./import-all.sh
+```
+
+### 12. Test on Orchestrate UI
+Click on Launch Watsonx Orchestrate from IBM cloud. select agents from dropdown.   
+![env_details](images/orchestrate_launch_page.png)
+
+
+Instana Agent Questions:
+```
+1.Fetch logs for event ID YaFcKlfeRwqUmLUQwje4EA
+2.Fetch logs for the pod restart count for the application Qotd-Hackathon-Fsm is high. with severity marked as 10 and event ID YaFcKlfeRwqUmLUQwje4EA
+```
+![Instana_results](images/Instana_results.png)
+
+Concert Agent Questions:
+```
+1.get insights for CVE-2024-5535
+2.get CVE which is having high score
+3.what images affected for CVE-2022-2068
+```
+![Concert_results](images/Concert_results.png)
+
+Turbonomic Agent Questions:
+```
+1.Fetch Top severity critical UUIDs
+2.Fetch 638929958641108 uuid insights
+```
+![Turbonomic_results](images/Turbonomic_results.png)
+
+---
+
+# jenkins mcp server
+
+Prerequisites
+
+- You have your Jenkins credentials (username, password and jenkins instance url).
+- The MCP Server plugin is installed on your Jenkins instance.
+
+Steps
+
+1. Go to Agent Builder in watsonx Orchestrate.
+
+2. Go to Tools.
+   ![Create tools](images/create_tools.png)
+   (file: [images/create_tools.png](jenkins_images/create_tools.png))
+
+3. Click on "Add from file or MCP server".
+   ![Add MCP step 1](images/add_mcp_01.png)
+   (file: [images/add_mcp_01.png](images/add_mcp_01.png))
+
+4. Import from MCP Server.
+   ![Import from MCP Server](images/add_mcp_02.png)
+   (file: [images/add_mcp_01.png](images/add_mcp_02.png))
+
+5. Add MCP Server.
+   ![Add MCP server](images/add_mcp_03.png)
+   (file: [images/add_mcp_02.png](images/add_mcp_03.png))
+
+6. Fill out details for the MCP Server:
+
+- Server name: `jenkins_dev`
+- Description: `This is my Jenkins dev server`
+- Select Connection: `None`
+- Install command: replace `<user>`, `<password>`, `<jenkins-url>` in the command below:
+
+```
+uvx mcp-proxy https://<user>:<password>@<jenkins-url>/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+```
+
+For example,
+
+```
+uvx mcp-proxy https://admin:726d8da7968f47dfa917b9be3ffff2f7@jenkins-app.20nqsmcqvh0j.us-south.codeengine.appdomain.cloud/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+```
+
+Connection details screenshot:
+![MCP connection details](images/mcp_conn_details.png)
+(file: [images/mcp_conn_details.png](images/mcp_conn_details.png))
+
+Click on 'Connect' and wait for connection successful message
+![MCP connection successful](images/mcp_conn_success.png)
+
+7. Activate tools by turning on the toggle for all the available tools within this MCP server
+
+![Activate tools](images/toggle_on.png)
+

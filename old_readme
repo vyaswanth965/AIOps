@@ -1,0 +1,549 @@
+# ITOPs Agents using IBM watsonx Orchestrate ADK
+
+This hands-on lab takes you on a guided journey to build an intelligent **IT Operations (ITOps) Assistant Agent** using the **IBM watsonx Orchestrate Agent Development Kit (ADK)**.  
+By the end of this lab, you’ll not only have built and deployed your own Orchestrate agents — you’ll also understand how AI-driven orchestration can transform reactive IT operations into proactive, insight-driven workflows.
+
+Throughout the session, you’ll play the role of an ITOps engineer setting up digital agents that can understand natural language, fetch diagnostic data, and recommend actions — all using the watsonx Orchestrate ADK.
+
+---
+
+## Table of Contents
+
+- [1. Lab Overview](#1-lab-overview)
+- [2. Solution Architecture](#2-solution-architecture)
+- [3. Project Structure](#3-project-structure)
+- [4. Meet Your Agents](#4-meet-your-agents)
+- [5. Lab Flow – What You’ll Build](#5-lab-flow--what-youll-build)
+- [6. Step-by-Step Guide](#6-step-by-step-guide)
+  - [Step 1 – Install Python 3.11+](#step-1--install-python-311)
+  - [Step 2 – Clone the Repository](#step-2--clone-the-repository)
+  - [Step 3 – Navigate into the Project Folder](#step-3--navigate-into-the-project-folder)
+  - [Step 4 – Create and Activate a Virtual Environment](#step-4--create-and-activate-a-virtual-environment)
+  - [Step 5 – Install and Validate ADK](#step-5--install-and-validate-adk)
+  - [Step 6 – Reserve a Watsonx Orchestrate Environment](#step-6--reserve-a-watsonx-orchestrate-environment)
+  - [Step 7 – Add Your Environment](#step-7--add-your-environment)
+  - [Step 8 – Activate Environment](#step-8--activate-environment)
+  - [Step 9 – Import Tools & Agents](#step-9--import-tools--agents)
+  - [Step 10 – Test on Orchestrate UI](#step-10--test-on-orchestrate-ui)
+- [7. Integrating Jenkins MCP Server](#7-integrating-jenkins-mcp-server)
+- [8. Conclusion](#8-conclusion)
+
+---
+
+## 1. Lab Overview
+
+Imagine you’re part of a large enterprise IT team responsible for ensuring seamless service uptime.  
+When something breaks, engineers scramble to gather logs, check performance metrics, identify bottlenecks, and decide what to fix first.  
+
+Wouldn’t it be better if your system *did that for you*?  
+That’s exactly what you’ll build in this lab: a suite of intelligent, domain-specific IT agents that can answer questions like:
+- “Fetch logs for event ID XYZ”
+- “Get insights for CVE-2024-5535”
+- “List high-severity issues affecting my environment”
+
+Each agent will serve a specific purpose:
+- **Instana Agent** for real-time observability and performance diagnostics  
+- **Concert Agent** for compliance and vulnerability analysis  
+- **Turbonomic Agent** for resource optimization and capacity insights  
+
+Together, these agents form the backbone of an intelligent ITOps automation ecosystem.
+
+---
+
+## 2. Solution Architecture
+
+The following diagram illustrates the high-level architecture — how your agents interact with watsonx Orchestrate, gather insights, and respond to user requests.
+
+![orchestrate_env_name](images/Solution_Architecture.png)
+
+---
+
+## 3. Project Structure
+
+```
+├── README.md
+├── agents
+│   ├── concert.yaml
+│   ├── instana.yaml
+│   └── turbonomic.yaml
+├── files
+│   ├── concert_docs
+│   ├── instana_docs
+│   └── turbo_docs
+├── import-all.sh
+├── knowledge_base
+│   ├── concertdb.yaml.template
+│   └── turbodb.yaml.template
+└── tools
+    ├── getinstanalogs.py
+    ├── requirements.txt
+    └── utils.py
+```
+
+| Folder / File | Description |
+|----------------|-------------|
+| **agents/** | Contains YAML definitions for the Orchestrate Agents (Concert, Instana, Turbonomic). |
+| **files/** | Example data files for each domain. |
+| **knowledge_base/** | Configuration templates for the Orchestrate knowledge base. |
+| **tools/** | Utility scripts for data retrieval and setup. |
+| **import-all.sh** | Automates tool and agent import into Orchestrate. |
+
+---
+
+## 4. Meet Your Agents
+
+### Instana Agent  
+A real-time monitoring agent that automatically discovers and reports performance metrics and traces. It provides full-stack observability, helping teams quickly diagnose latency, service errors, and performance issues.
+
+### Concert Agent  
+A compliance and resilience agent designed to analyze vulnerabilities, surface high-risk CVEs, and recommend remediation steps. It continuously correlates application and configuration data to produce audit-ready insights.
+
+### Turbonomic Agent  
+An optimization agent that analyzes resource demand and supply across hybrid environments. It recommends actions to balance workloads, reduce cost, and ensure performance continuity.
+
+---
+
+## 5. Lab Flow – What You’ll Build
+
+1. **Set up your local environment**  
+   Prepare your Python virtual environment and install the watsonx Orchestrate ADK.
+
+2. **Connect to watsonx Orchestrate**  
+   Reserve your environment through IBM TechZone and connect it to your CLI.
+
+3. **Create and import your agents**  
+   Define the agents and their tools using provided YAML and Python files.
+
+4. **Deploy and test on the watsonx Orchestrate UI**  
+   Interact with your agents through natural-language queries and observe how they return real-time results.
+
+By following this structured storyline, you’ll simulate a real IT operations workflow — from setup to live AI-driven assistance.
+
+---
+
+## 6. Step-by-Step Guide
+
+### Step 1 – Install Python 3.11+
+Make sure **Python 3.11 or above** (up to 3.13) is installed.
+
+### Step 2 – Clone the Repository
+```bash
+git clone https://github.ibm.com/ibm-us-fsm-ce/AgenticAIforITOps.git
+```
+
+### Step 3 – Navigate into the Project Folder
+```bash
+cd AgenticAIforITOps/Distributed\ Platforms/
+```
+
+### Step 4 – Create and Activate a Virtual Environment
+```bash
+python -m venv envadk
+source envadk/bin/activate
+```
+
+### Step 5 – Install and Validate ADK
+```bash
+pip install ibm-watsonx-orchestrate
+pip install --upgrade ibm-watsonx-orchestrate
+
+orchestrate --version
+```
+
+### Step 6 – Reserve a Watsonx Orchestrate Environment
+1. Open https://techzone.ibm.com/my/reservations in your browser.  
+2. In the search bar, type “watsonx Orchestrate Trial/Standard plan” and select the corresponding environment.
+    
+
+![orchestrate_env_name](images/orchestrate_env_name.png)
+
+
+3. Click Request an environment.   
+4. Fill out the form with the required details and submit.  
+
+![reserving](images/reserving.png)
+
+5. After successful reservation, you’ll receive an email invitation to join the environment. Click the link in the email to join.  
+
+---
+
+### Step 7 – Add Your Environment
+
+1. Go to https://techzone.ibm.com/my/reservations  
+2. Under watsonx Orchestrate Trial/Standard plan, click Open this environment.  
+
+ ![my_reservations](images/my_reservations.png)
+  
+3. Check your Cloud Account Number and click on Cloud Resources.
+ ![env_details](images/environment_details.png)
+
+4. Ensure you are in same IBM cloud account as in techzone reservation.    
+In the Resource List, expand AI / Machine Learning and click on the Watson Orchestrate-itz resource.  
+  ![env_details](images/resources.png)
+
+5. Run the following command to add your environment.
+Replace `<service-instance-url>` with your Watsonx Orchestrate URL and `<name>` with any name (e.g., Itops):
+```bash
+orchestrate env add -n <name> -u <service-instance-url>
+```
+  ![env_details](images/orchestrate_launch_page.png)
+
+### Step 8 – Activate Environment
+Generate an API key using the instructions (upto step 8) on this page section IBM Cloud:
+https://developer.watson-orchestrate.ibm.com/environment/production_import#ibm-cloud
+
+Run the following command to activate your environment.  
+```bash
+orchestrate env activate <name>
+```
+You will be prompted to enter your WXO API key.
+
+---
+
+### Step 9 – Import Tools & Agents
+
+Use Import Script
+```bash
+./import-all.sh
+```
+
+This step registers all agents (Instana, Concert, Turbonomic) into your Watsonx Orchestrate environment.
+
+---
+
+### Step 10 – Test on Orchestrate UI
+Click on Launch Watsonx Orchestrate from IBM cloud. select agents from dropdown.   
+![env_details](images/orchestrate_launch_page.png)
+
+
+Instana Agent Questions:
+```
+1.Fetch logs for event ID YaFcKlfeRwqUmLUQwje4EA
+2.Fetch logs for the pod restart count for the application Qotd-Hackathon-Fsm is high. with severity marked as 10 and event ID YaFcKlfeRwqUmLUQwje4EA
+```
+![Instana_results](images/Instana_results.png)
+
+Concert Agent Questions:
+```
+1.get insights for CVE-2024-5535
+2.get CVE which is having high score
+3.what images affected for CVE-2022-2068
+```
+![Concert_results](images/Concert_results.png)
+
+Turbonomic Agent Questions:
+```
+1.Fetch Top severity critical UUIDs
+2.Fetch 638929958641108 uuid insights
+```
+![Turbonomic_results](images/Turbonomic_results.png)
+
+---
+
+## 7. Integrating Jenkins MCP Server
+
+To explore how Orchestrate connects with external automation systems, you’ll integrate a **Jenkins MCP Server**.  
+This step simulates connecting your agents to continuous integration workflows or operational pipelines.
+
+### Prerequisites
+
+- You have your Jenkins credentials (username, password and jenkins instance url).
+- The MCP Server plugin is installed on your Jenkins instance.
+
+### Steps
+
+1. Go to Agent Builder in watsonx Orchestrate.
+
+2. Go to Tools.
+   ![Create tools](images/create_tools.png)
+   (file: [images/create_tools.png](jenkins_images/create_tools.png))
+
+3. Click on "Add from file or MCP server".
+   ![Add MCP step 1](images/add_mcp_01.png)
+   (file: [images/add_mcp_01.png](images/add_mcp_01.png))
+
+4. Import from MCP Server.
+   ![Import from MCP Server](images/add_mcp_02.png)
+   (file: [images/add_mcp_01.png](images/add_mcp_02.png))
+
+5. Add MCP Server.
+   ![Add MCP server](images/add_mcp_03.png)
+   (file: [images/add_mcp_02.png](images/add_mcp_03.png))
+
+6. Fill out details for the MCP Server:
+
+- Server name: `jenkins_dev`
+- Description: `This is my Jenkins dev server`
+- Select Connection: `None`
+- Install command: replace `<user>`, `<password>`, `<jenkins-url>` in the command below:
+
+```
+uvx mcp-proxy https://<user>:<password>@<jenkins-url>/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+```
+
+For example,
+
+```
+uvx mcp-proxy https://admin:726d8da7968f47dfa917b9be3ffff2f7@jenkins-app.20nqsmcqvh0j.us-south.codeengine.appdomain.cloud/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+```
+
+Connection details screenshot:
+![MCP connection details](images/mcp_conn_details.png)
+(file: [images/mcp_conn_details.png](images/mcp_conn_details.png))
+
+Click on 'Connect' and wait for connection successful message
+![MCP connection successful](images/mcp_conn_success.png)
+
+7. Activate tools by turning on the toggle for all the available tools within this MCP server
+
+![Activate tools](images/toggle_on.png)
+
+---
+
+## 8. Conclusion
+
+By the end of this lab, you’ve:
+- Learned how to build, configure, and register Orchestrate agents  
+- Connected these agents to real IT workflows  
+- Experienced how conversational AI can transform IT operations  
+
+What began as a simple command line setup evolved into a working ecosystem of intelligent ITOps agents — capable of interpreting natural-language queries, performing diagnostics, and delivering actionable insights.
+
+You’ve not only built automation — you’ve built *understanding* of how AI, orchestration, and domain expertise come together to power the future of IT operations.
+
+
+# Building a Packer MCP Server and integrating with IBM watsonx Orchestrate
+
+This hands-on lab demonstrates how an **AI-powered Remediation Server** can use **IBM watsonx Orchestrate** and **Packer** to automatically build and patch container images based on security alerts.  
+
+By the end of this lab, you’ll understand how to connect to an existing **MCP Server**, integrate it with **Orchestrate**, and experience an intelligent, automated DevSecOps workflow end-to-end.
+
+---
+
+## Table of Contents
+- [1. Overview](#1-overview)
+- [2. Learning Objectives](#2-learning-objectives)
+- [3. Architecture Flow](#3-architecture-flow)
+- [4. Prerequisites](#4-prerequisites)
+- [5. Understanding the Story](#5-understanding-the-story)
+- [6. Explore the Remediation Pipeline](#6-explore-the-remediation-pipeline)
+- [7. Containerizing the Server](#7-containerizing-the-server)
+- [8. Integrating the MCP Server with watsonx Orchestrate](#8-integrating-the-mcp-server-with-watsonx-orchestrate)
+- [9. Testing the Agent End-to-End](#9-testing-the-agent-end-to-end)
+- [10. Reflection and Next Steps](#10-reflection-and-next-steps)
+
+---
+
+## 1. Overview
+
+In modern DevSecOps environments, vulnerabilities appear daily. Manually identifying, remediating, and rebuilding secure images is time-consuming.  
+In this lab, you’ll experience how **IBM watsonx Orchestrate**, combined with an **MCP-based Packer Server**, can automatically:
+
+- Interpret CVE alerts  
+- Generate remediation commands using **Watsonx LLM**  
+- Dynamically create **Packer HCL** and **Dockerfile**  
+- Build and publish patched images to your registry  
+
+---
+
+## 2. Learning Objectives
+
+By the end of this lab, participants will:
+
+1. Understand how MCP servers extend automation capabilities in Orchestrate.  
+2. Learn how AI can generate Infrastructure-as-Code from natural-language vulnerabilities.  
+3. Connect Orchestrate to an external Packer MCP Server.  
+4. Trigger automated remediation workflows through AI conversation.
+
+---
+
+## 3. Architecture Flow
+
+```
+User / Analyst
+     ↓
+Watsonx LLM  — generates shell remediation commands
+     ↓
+Remediation MCP Server  — renders Packer + Dockerfile templates
+     ↓
+Remote Builder  — builds and pushes patched image to registry
+     ↓
+IBM watsonx Orchestrate  — exposes this as an agent skill
+     ↓
+Operational Dashboard — displays built artifacts and logs
+```
+
+---
+
+## 4. Prerequisites
+
+- IBM watsonx Orchestrate account (Agent Builder access)  
+- IBM watsonx API key and endpoint  
+- Docker or Podman installed locally  
+- Basic familiarity with Python and containerization  
+
+---
+
+## 5. Understanding the Story
+
+Let’s start with a real-world scenario:
+
+> A new security alert lands: **CVE-2022-2068** — OpenSSL vulnerability in Alpine Linux.
+
+In traditional IT Ops, engineers would manually:
+- Identify affected services  
+- Patch base images  
+- Validate builds  
+- Redeploy workloads  
+
+In this lab, **you’ll see the same process fully automated** through an MCP-connected agent that:
+1. Reads an alert.  
+2. Uses the Watsonx LLM to generate patch commands.  
+3. Builds a new image using Packer.  
+4. Publishes the secure version automatically.
+
+---
+
+## 6. Explore the Remediation Pipeline
+
+The heart of this lab is the **Remediation Pipeline**, implemented in [`remediation_pipeline.py`](remediation_pipeline.py).  
+
+It demonstrates:
+- How the LLM generates security remediation shell commands.  
+- How Jinja2 templates are used to render **Packer HCL** and **Dockerfile** dynamically.  
+- How a remote builder creates the patched image.
+
+You can explore or modify this pipeline to learn how AI can be embedded in DevOps automation workflows.
+
+> MCP Server URL:  
+> [https://packer-mcp-server.your-lab-domain/mcp-server/mcp](https://packer-mcp-server.your-lab-domain/mcp-server/mcp)
+
+This MCP Server will be used in the integration step below.
+
+---
+
+## 7. Containerizing the Server
+
+If you want to containerize and run your own version, the repo includes:
+
+- **`requirements.txt`** — Python dependencies  
+- **`Dockerfile`** — ready-to-run container image  
+
+```bash
+docker build -t packer-mcp-server:latest .
+docker run --rm -it -p 8070:8070 packer-mcp-server:latest
+```
+
+This provides a reproducible environment for experimentation or CI/CD integration.
+
+---
+
+## 8. Integrating the MCP Server with watsonx Orchestrate
+
+In this step, you’ll connect your Orchestrate Agent to the MCP Server and enable automated remediation skills.
+
+### Steps
+
+1. Go to **Agent Builder** in **watsonx Orchestrate**.
+
+2. Go to **Tools**.  
+   ![Create tools](images/create_tools.png)  
+   (file: [images/create_tools.png](jenkins_images/create_tools.png))
+
+3. Click on **"Add from file or MCP server"**.  
+   ![Add MCP step 1](images/add_mcp_01.png)  
+   (file: [images/add_mcp_01.png](images/add_mcp_01.png))
+
+4. Choose **Import from MCP Server**.  
+   ![Import from MCP Server](images/add_mcp_02.png)  
+   (file: [images/add_mcp_01.png](images/add_mcp_02.png))
+
+5. Click on **Add MCP Server**.  
+   ![Add MCP server](images/add_mcp_03.png)  
+   (file: [images/add_mcp_02.png](images/add_mcp_03.png))
+
+6. Fill out the details for the MCP Server:
+
+   - **Server name:** `jenkins_dev`  
+   - **Description:** `This is my Jenkins dev server`  
+   - **Select Connection:** `None`  
+   - **Install command:** (replace `<user>`, `<password>`, `<jenkins-url>` in the command below)
+
+   ```
+   uvx mcp-proxy https://<user>:<password>@<jenkins-url>/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+   ```
+
+   **Example:**
+
+   ```
+   uvx mcp-proxy https://admin:726d8da7968f47dfa917b9be3ffff2f7@jenkins-app.20nqsmcqvh0j.us-south.codeengine.appdomain.cloud/mcp-server/mcp --transport streamablehttp --header mcp-session-id 6e9d4c68-39b6-4fc5-aa05-31d7c1cb5afe
+   ```
+
+   Connection details screenshot:  
+   ![MCP connection details](images/mcp_conn_details.png)  
+   (file: [images/mcp_conn_details.png](images/mcp_conn_details.png))
+
+   Click **Connect** and wait for the “Connection successful” message:  
+   ![MCP connection successful](images/mcp_conn_success.png)
+
+7. Finally, **activate tools** by toggling them on within this MCP server:  
+   ![Activate tools](images/toggle_on.png)
+
+Once activated, Orchestrate will recognize all available tools exposed by the Packer MCP Server.
+
+---
+
+## 9. Testing the Agent End-to-End
+
+After successful integration, open your **Orchestrate workspace** and test the interaction.
+
+Example natural-language prompt:
+
+> “Remediate the OpenSSL CVE in alpine:3.18.”
+
+You’ll see the Orchestrate Agent:
+1. Parse your intent.  
+2. Invoke the MCP Server tool.  
+3. Display progress logs as the image is rebuilt and tagged.  
+4. Return success message with new image details.
+
+---
+
+## 10. Reflection and Next Steps
+
+Congratulations! 🎉
+You’ve successfully connected **IBM watsonx Orchestrate** to an external **Packer MCP Server** — enabling intelligent remediation at scale.
+
+### In this lab, you’ve learned:
+- How AI transforms static DevOps workflows into autonomous remediation loops.  
+- How Orchestrate leverages MCP to call specialized automation agents.  
+- How container image builds can be automatically driven by language models.
+
+### Next Steps
+- Integrate build notifications into Slack or ServiceNow.  
+- Extend this MCP server to support compliance validation.  
+- Explore Watsonx AI for reasoning-based infrastructure recommendations.
+
+---
+
+## Repository Structure
+
+```
+.
+├── remediation_pipeline.py   # AI-driven remediation logic
+├── requirements.txt
+├── Dockerfile
+└── README.md                 # This file
+```
+
+---
+
+### Key Takeaway
+
+This lab isn’t just about connecting systems — it’s about **teaching automation to think**.  
+By combining **Watsonx intelligence** with **MCP automation**, you’ve built the foundation of an AI-powered DevSecOps assistant.
+
+> “Automation executes.  
+>  Intelligence explains.  
+>  Together — they transform operations.”
+
