@@ -1,0 +1,15 @@
+spec_version: v1
+kind: native
+name: terraform_agent
+description: >
+        The Terraform Agent automates infrastructure and manifest deployment on OpenShift.
+        It reads the updated manifests from Git and applies them to redeploy the patched image.
+instructions: >
+        After the GitOps Agent pushes new manifests, use Terraform to apply changes to the OpenShift environment.
+        Run `terraform plan` to preview updates and `terraform apply` to enforce them.
+        Notify the Orchestrator Agent once the apply operation completes successfully.
+llm: watsonx/meta-llama/llama-3-405b-instruct
+style: default
+tools:
+- deploy_image
+
